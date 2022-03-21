@@ -48,6 +48,34 @@ exports.callback = functions.https.onRequest(async (request, response) => {
 });
 
 exports.tweet = functions.https.onRequest(async (request, response) => {
+  const { state, code } = request.query;
+
+  const dbSnapshot = await dbRef.get();
+  const { codeVerifier, state: storedState } = dbSnapshot.data();
+
+  if (state !== storedState) {
+    return response.status(400).send('Stored tokens do not match!');
+  }
+
+  const {
+    client: loggedClient,
+    accessToken,
+    refreshToken,
+  } = await twitterClient.loginWithOAuth2({
+    code,
+    codeVerifier,
+    redirectUri: callbackURL,
+  });
+
+  await dbRef.set({ accessToken, refreshToken });
+
+  const { data } = await loggedClient.v2.me(); // start using the client if you want
+
+  response.send(data);
+});
+
+exports.tweet = functions.https.onRequest(async (request, response) => {
+  try{
     const { refreshToken } = (await dbRef.get()).data();
 
     const {
@@ -66,6 +94,7 @@ exports.tweet = functions.https.onRequest(async (request, response) => {
           slug
           author{
               name
+              publicationDomain
               socialMedia {
                   twitter
                   github
@@ -90,27 +119,39 @@ exports.tweet = functions.https.onRequest(async (request, response) => {
   const ApiRes = await fetchPosts()
   console.log(ApiRes.data.storiesFeed[0]);
 
-  let isTwitterExists = 0;
+  let isExists=false;
   let i=-1;
-  while(!isTwitterExists && i<10){
+  while(!isExists && i<8){
       i+=1;
-      isTwitterExists = ApiRes.data.storiesFeed[i].author.socialMedia.twitter != "" ? 1 : 0;
+      console.log(ApiRes.data.storiesFeed[i].author.publicationDomain)
+      isExists = (ApiRes.data.storiesFeed[i].author.socialMedia.twitter != "" &  (ApiRes.data.storiesFeed[i].author.publicationDomain != "" & ApiRes.data.storiesFeed[i].author.publicationDomain != null)) ? 1 : 0; //Change second condition
+      if (isExists){
+        break;
+      }
   }
   if(i==10){
       response.send("No new posts");
   }
-  const name = isTwitterExists? ApiRes.data.storiesFeed[i].author.socialMedia.twitter.split("/")[3] : ApiRes.data.storiesFeed[i].author.name;
+  const name = isExists? ApiRes.data.storiesFeed[i].author.socialMedia.twitter.split("/")[3] : ApiRes.data.storiesFeed[i].author.name;
   const post = ApiRes.data.storiesFeed[i];
-  if(isTwitterExists){
-    const { data } = await refreshedClient.v2.tweet(
-      '@%s talks about %s:\n%s \nRead more at https://hashnode.com/%s', name, post.title, post.brief, post.slug
-    );
-    response.send(data);
+  var theLine;
+  var descript="";
+  var midArray = post.brief.split(" ");
+  for (var j = 0; j < 15; j++){
+    descript += midArray[j] + " ";
+  }
+  descript += "...";
+  if(isExists){
+    theLine = '@' + name + ' talks about ' +  post.title + ':\n' + descript + '\nRead more at https://' + post.author.publicationDomain + '/'  + post.slug;
   }
   else{
-    const { data } = await refreshedClient.v2.tweet(
-      '%s talks about %s:\n%s \nRead more at https://hashnode.com/%s', name, post.title, post.brief, post.slug
-    );
-    response.send(data);
+    theLine = name + ' talks about ' +  post.title + ':\n' + descript + '\nRead more at https://hashnode.com/' + post.slug;
   }
+  console.log(theLine);
+  data = await refreshedClient.v2.tweet(theLine);
+  response.send(data);
+}
+catch (err) {
+  response.send(err);
+}
 });
