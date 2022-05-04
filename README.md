@@ -10,9 +10,9 @@ A twitter bot which specializes in posting Top Posts from Hashnode
 
 https://twitter.com/PosterHash/
 
-## Under construction!
+## Recently Added Feature:
 
-- Addition of ML Model to learn from tweet engagement to choose the best posts to improve the twitter reach.
+Use of NLP model to rate technology posts as higher using Naive Bayes algorithm and giving them higher priority when choosing the blog to tweet.
 
 
 
