@@ -1,6 +1,6 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-const serviceAccount = require("./twitterbot-2bd3a-firebase-adminsdk-apue5-790f621bca.json");
+// const serviceAccount = require("./twitterbot-2bd3a-firebase-adminsdk-apue5-790f621bca.json");
 admin.initializeApp({
   // credential: firebase_admin.credential.cert(serviceAccount),
   projectId: "twitterbot-2bd3a"
