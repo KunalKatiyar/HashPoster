@@ -1,6 +1,6 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-// const serviceAccount = require("./twitterbot-2bd3a-firebase-adminsdk-apue5-790f621bca.json");
+// const serviceAccount = require("./twitterbot-2bd3a-firebase-adminsdk-apue5-790f621bca.json")
 admin.initializeApp({
   // credential: firebase_admin.credential.cert(serviceAccount),
   projectId: "twitterbot-2bd3a"
@@ -152,6 +152,19 @@ exports.tweet = functions.https.onRequest(async (request, response) => {
 
   return(ApiResponse)
   }
+  var fs = require('fs'); 
+  var parse = require('csv-parse');
+  var WhichX = require("whichx");
+  var whichtech = new WhichX();
+  var labels = ["tech","notech"];
+
+  whichtech.addLabels(labels);
+
+  var parser1 = parse.parse({columns: true}, function (err, records) {});
+  var parser2 = parse.parse({columns: true}, function (err, records) {});
+
+  var results1= [];
+  var results2= [];
   
   const ApiRes = await fetchPosts()
   // console.log(ApiRes.data.storiesFeed[0]);
@@ -168,88 +181,140 @@ exports.tweet = functions.https.onRequest(async (request, response) => {
       //Change second condition
     //   console.log(isExists)
   }
-  // console.log(goodPosts)
+ 
   let check=0;
   let ans="";
-  console.log("start")
-  if(goodPosts.length==0){
-      // response.send("No new posts");
-      check=1;
-      async function getblogs() {
-        console.log("ok")
-        admin.firestore().collection("blogs")
-        .orderBy("date", "desc")
-        .limit(1)
-        .get()
-        .then(querySnapshot => {
-            if (!querySnapshot.empty) {
-                //We know there is one doc in the querySnapshot
-                const queryDocumentSnapshot = querySnapshot.docs[0].data();
-                console.log(queryDocumentSnapshot.theLine)
-                data = refreshedClient.v2.tweet(queryDocumentSnapshot.theLine);
-                response.send(data);
-                return querySnapshot.docs[0].ref.delete();
-            } else {
-                console.log("No document corresponding to the query!");
-                return null;
-            }
-        });
+
+  fs.createReadStream('data/tech.csv').pipe(parser1).on('data', (data) => {
+    results1.push(data);
+  })
+  .on('end', () => {
+    fs.createReadStream('data/notech.csv').pipe(parser2).on('data', (data) => {
+      results2.push(data);
+    })
+    .on('end', async () => {
+      for(var i=0;i<results1.length;i++){
+        whichtech.addData('tech',results1[i]['text']);
       }
-
-      snapshot = await getblogs();
-
-      // console.log(snapshot)
-
-      // snapshot.forEach((doc) => {
-      //   console.log(doc.id, '=>', doc.data());
-      // });
-  }
-  console.log("end")
-  for(let i=1;i<goodPosts.length;i++){
-    try{
-      const docRef = dbblogs.doc(String(goodPosts[i].dateAdded));
-      async function setblogs() {
+      for(var i=0;i<results2.length;i++){
+        whichtech.addData('notech', results2[i]['text']);
+      }
+      for(var i=0;i<goodPosts.length;i++){
+        // var ans = whichtech.classify("@DEVfulness \ntalks about Day 2 - Differences between checked & unchecked exceptions in java!:\nChecked Exceptions\nThese are checked during compile time itself. Checked Exceptions should be either handled or ...\nRead more at");
+        // console.log(ans);
         const name = goodPosts[i].author.socialMedia.twitter.split("/")[3];
         const post = goodPosts[i];
+        descript="";
         var theLine;
-        var descript="";
         var midArray = post.brief.split(" ");
         for (var j = 0; j < 15; j++){
           descript += midArray[j] + " ";
         }
         descript += "...";
-        theLine = '@' + name + ' talks about ' +  post.title + ':\n' + descript + '\nRead more at https://' + post.author.publicationDomain + '/'  + post.slug;
-        await docRef.set({
-            theLine: theLine,
-            date: goodPosts[i].dateAdded
-        })
-      };
-      await setblogs();
-    }
-    catch(err){
-      console.log(err);
-    }
-  }
+        theLine = post.title + ':\n' + descript;
+        var ans = whichtech.classify(theLine);
+        var values = whichtech.returnClassifyValues(theLine);
+        let value,sum=0;
+        console.log(values)
+        for(let obj of values){
+          console.log(obj)
+          sum+=obj.chance;
+          if(obj.label === 'tech'){
+            value = obj.chance;
+          }
+        }
+        goodPosts[i]['category'] = {
+          name: 'tech',
+          value: (value/sum)*100
+        }
+      }
+      console.log(goodPosts)
+      goodPosts.sort((a, b) => parseFloat(b.category.value) - parseFloat(a.category.value));
+      console.log(goodPosts)
+      if(goodPosts.length==0){
+        // response.send("No new posts");
+        check=1;
+        async function getblogs() {
+          console.log("ok")
+          admin.firestore().collection("blogs")
+          .orderBy("value", "desc")
+          .limit(1)
+          .get()
+          .then(querySnapshot => {
+              if (!querySnapshot.empty) {
+                  //We know there is one doc in the querySnapshot
+                  const queryDocumentSnapshot = querySnapshot.docs[0].data();
+                  console.log(queryDocumentSnapshot.theLine)
+                  data = refreshedClient.v2.tweet(queryDocumentSnapshot.theLine);
+                  response.send(data);
+                  return querySnapshot.docs[0].ref.delete();
+              } else {
+                  console.log("No document corresponding to the query!");
+                  return null;
+              }
+          });
+        }
   
-  if(!check){
-    const name = goodPosts[0].author.socialMedia.twitter.split("/")[3];
-    const post = goodPosts[0];
-    descript="";
-    var theLine;
-    var midArray = post.brief.split(" ");
-    for (var j = 0; j < 15; j++){
-      descript += midArray[j] + " ";
+        snapshot = await getblogs();
+  
+        // console.log(snapshot)
+  
+        // snapshot.forEach((doc) => {
+        //   console.log(doc.id, '=>', doc.data());
+        // });
     }
-    descript += "...";
-    console.log(ans)
-    console.log("Pog")
-    theLine = check?ans:'@' + name + ' talks about ' +  post.title + ':\n' + descript + '\nRead more at https://' + post.author.publicationDomain + '/'  + post.slug;
-    console.log(theLine)
-    data = await refreshedClient.v2.tweet(theLine);
-    response.send(data);
-  }
-  // response.send("done")
-  console.log("done")
+    console.log("end")
+    for(let i=1;i<goodPosts.length;i++){
+      try{
+        const docRef = dbblogs.doc(String(goodPosts[i].dateAdded));
+        async function setblogs() {
+          const name = goodPosts[i].author.socialMedia.twitter.split("/")[3];
+          const post = goodPosts[i];
+          var theLine;
+          var descript="";
+          var midArray = post.brief.split(" ");
+          for (var j = 0; j < 15; j++){
+            descript += midArray[j] + " ";
+          }
+          descript += "...";
+          theLine = '@' + name + ' talks about ' +  post.title + ':\n' + descript + '\nRead more at https://' + post.author.publicationDomain + '/'  + post.slug;
+          await docRef.set({
+              theLine: theLine,
+              date: goodPosts[i].dateAdded,
+              category: goodPosts[i].category.name,
+              value: goodPosts[i].category.value
+          })
+        };
+        await setblogs();
+      }
+      catch(err){
+        console.log(err);
+      }
+    }
+    
+    if(!check){
+      const name = goodPosts[0].author.socialMedia.twitter.split("/")[3];
+      const post = goodPosts[0];
+      descript="";
+      var theLine;
+      var midArray = post.brief.split(" ");
+      for (var j = 0; j < 15; j++){
+        descript += midArray[j] + " ";
+      }
+      descript += "...";
+      console.log(ans)
+      console.log("Pog")
+      theLine = check?ans:'@' + name + ' talks about ' +  post.title + ':\n' + descript + '\nRead more at https://' + post.author.publicationDomain + '/'  + post.slug;
+      console.log(theLine)
+      data = await refreshedClient.v2.tweet(theLine);
+      response.send(data);
+    }
+    console.log("done")
+    });
+  });
+
+  
+  
 }
 catch (err) {
   response.send(err);
