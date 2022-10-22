@@ -22,7 +22,6 @@ const { state, code } = request.query;
   const { data } = await loggedClient.v2.me(); // start using the client if you want
 
   response.send(data);
-});
 
 exports.tweet = functions.https.onRequest(async (request, response) => {
     const { refreshToken } = (await dbRef.get()).data();
@@ -88,3 +87,4 @@ exports.tweet = functions.https.onRequest(async (request, response) => {
   console.log(theLine);
   data = await refreshedClient.v2.tweet(theLine);
   response.send(data);
+});
