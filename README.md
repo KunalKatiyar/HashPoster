@@ -14,5 +14,9 @@ https://twitter.com/PosterHash/
 
 Use of NLP model to rate technology posts as higher using Naive Bayes algorithm and giving them higher priority when choosing the blog to tweet.
 
+## To Contribute
+
+Check out the [contribution guide](https://github.com/KunalKatiyar/HashPoster/blob/master/Contributing.md) for more information.
+
 
 
