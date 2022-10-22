@@ -9,38 +9,6 @@ admin.initializeApp({
 const dbRef = admin.firestore().doc('tokens/demo');
 const dbblogs = admin.firestore().collection('blogs');
 
-// console.log(dbRef)
-// console.log(dbblogs)
-
-// const docRef = dbblogs.doc('alovelaceasd');
-
-// async function setblogs() {
-//   await docRef.set({
-//     first: 'Adaa',
-//     last: 'Lovelace',
-//     born: 1815
-//   })
-// };
-
-// setblogs();
-
-// async function getblogs() {
-//   const snapshot = await admin.firestore().collection('blogs').get();
-//   snapshot.forEach((doc) => {
-//     console.log(doc.id, '=>', doc.data());
-//   });
-//   console.log(snapshot)
-// }
-
-// snapshot = getblogs();
-
-// console.log(snapshot)
-// snapshot.forEach((doc) => {
-//   console.log(doc.id, '=>', doc.data());
-// });
-
-
-// setblogs();
 var TwitterApi = require("twitter-api-v2").default;
 const twitterClient = new TwitterApi({
     clientId: "Mm9jU3JkbDNYSm1hU2lxVnZlU3c6MTpjaQ",
@@ -105,7 +73,7 @@ exports.tweet = functions.https.onRequest(async (request, response) => {
 
   await dbRef.set({ accessToken, refreshToken });
 
-  const { data } = await loggedClient.v2.me(); // start using the client if you want
+  const { data } = await loggedClient.v2.me();
 
   response.send(data);
 });
@@ -167,19 +135,14 @@ exports.tweet = functions.https.onRequest(async (request, response) => {
   var results2= [];
   
   const ApiRes = await fetchPosts()
-  // console.log(ApiRes.data.storiesFeed[0]);
 
   let i=-1;
   let goodPosts = [];
   while(i<9){
       i=i+1;
-      // console.log(ApiRes.data.storiesFeed[i].author);
-    //   console.log(ApiRes.data.storiesFeed[i].author.publicationDomain!= null)
       if (ApiRes.data.storiesFeed[i].author.socialMedia.twitter != "" & ( ApiRes.data.storiesFeed[i].author.publicationDomain != "" & ApiRes.data.storiesFeed[i].author.publicationDomain != null)) {
         goodPosts.push(ApiRes.data.storiesFeed[i]);
       } 
-      //Change second condition
-    //   console.log(isExists)
   }
  
   let check=0;
@@ -200,8 +163,6 @@ exports.tweet = functions.https.onRequest(async (request, response) => {
         whichtech.addData('notech', results2[i]['text']);
       }
       for(var i=0;i<goodPosts.length;i++){
-        // var ans = whichtech.classify("@DEVfulness \ntalks about Day 2 - Differences between checked & unchecked exceptions in java!:\nChecked Exceptions\nThese are checked during compile time itself. Checked Exceptions should be either handled or ...\nRead more at");
-        // console.log(ans);
         const name = goodPosts[i].author.socialMedia.twitter.split("/")[3];
         const post = goodPosts[i];
         descript="";
@@ -232,7 +193,6 @@ exports.tweet = functions.https.onRequest(async (request, response) => {
       goodPosts.sort((a, b) => parseFloat(b.category.value) - parseFloat(a.category.value));
       console.log(goodPosts)
       if(goodPosts.length==0){
-        // response.send("No new posts");
         check=1;
         async function getblogs() {
           console.log("ok")
@@ -242,7 +202,6 @@ exports.tweet = functions.https.onRequest(async (request, response) => {
           .get()
           .then(querySnapshot => {
               if (!querySnapshot.empty) {
-                  //We know there is one doc in the querySnapshot
                   const queryDocumentSnapshot = querySnapshot.docs[0].data();
                   console.log(queryDocumentSnapshot.theLine)
                   data = refreshedClient.v2.tweet(queryDocumentSnapshot.theLine);
@@ -256,12 +215,6 @@ exports.tweet = functions.https.onRequest(async (request, response) => {
         }
   
         snapshot = await getblogs();
-  
-        // console.log(snapshot)
-  
-        // snapshot.forEach((doc) => {
-        //   console.log(doc.id, '=>', doc.data());
-        // });
     }
     console.log("end")
     for(let i=1;i<goodPosts.length;i++){
